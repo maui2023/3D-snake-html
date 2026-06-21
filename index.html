@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake 3D // Google Antigravity AI Class</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #03030c;
+            --text-color: #f0f0f8;
+            --neon-green: #39ff14;
+            --neon-blue: #00f0ff;
+            --neon-pink: #ff0055;
+            --neon-yellow: #ffea00;
+            --glass-bg: rgba(10, 10, 25, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --font-display: 'Orbitron', sans-serif;
+            --font-sans: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-sans);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Latar Belakang 3D Canvas */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0.85;
+        }
+
+        /* Navigasi */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px 8%;
+            background: rgba(3, 3, 12, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+
+        .logo {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            background: linear-gradient(45deg, var(--neon-green), var(--neon-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: #c0c0d8;
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, var(--neon-green), #1bbb05);
+            color: #03030c !important;
+            padding: 10px 22px;
+            border-radius: 50px;
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.3);
+            transition: transform 0.3s, box-shadow 0.3s !important;
+        }
+
+        .nav-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px var(--neon-green) !important;
+            text-shadow: none !important;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10%;
+            position: relative;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 900px;
+            z-index: 10;
+        }
+
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #ffffff, #a0a0d8, var(--neon-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textGlow 6s infinite alternate;
+        }
+
+        @keyframes textGlow {
+            0% { filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.1)); }
+            100% { filter: drop-shadow(0 0 25px rgba(0, 240, 255, 0.35)); }
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: #a0a0c8;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .hero-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+        }
+
+        .btn {
+            font-family: var(--font-display);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 18px 40px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--neon-green), #1bbb05);
+            color: #03030c;
+            box-shadow: 0 0 20px rgba(57, 255, 20, 0.35);
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.06) translateY(-3px);
+            box-shadow: 0 0 35px var(--neon-green);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 240, 255, 0.1);
+            transform: scale(1.06) translateY(-3px);
+            box-shadow: 0 0 30px var(--neon-blue);
+        }
+
+        /* Ciri Utama Section (Promosi Game) */
+        .section {
+            padding: 100px 8%;
+            position: relative;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 70px;
+        }
+
+        .section-header h2 {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .section-header p {
+            color: #8080a8;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 80px;
+        }
+
+        .feature-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px 30px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            transition: transform 0.5s;
+            transform: scaleX(0);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            border-color: rgba(0, 240, 255, 0.3);
+            box-shadow: 0 20px 45px rgba(0, 240, 255, 0.15);
+        }
+
+        .feature-icon {
+            font-size: 2.2rem;
+            margin-bottom: 25px;
+            display: inline-block;
+        }
+
+        .feature-card h3 {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+
+        .feature-card p {
+            color: #9a9ab8;
+            font-size: 0.92rem;
+            line-height: 1.6;
+        }
+
+        /* Showcase Game (Pratonton) */
+        .showcase {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 50px;
+            align-items: center;
+            background: rgba(10, 10, 28, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 50px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .showcase-visual {
+            position: relative;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 0 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(57, 255, 20, 0.15);
+            border: 2px solid var(--glass-border);
+        }
+
+        .showcase-visual img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.6s ease;
+        }
+
+        .showcase-visual:hover img {
+            transform: scale(1.03);
+        }
+
+        .showcase-info h3 {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #ffffff;
+            border-left: 4px solid var(--neon-green);
+            padding-left: 15px;
+        }
+
+        .showcase-info p {
+            color: #a0a0c8;
+            font-size: 0.98rem;
+            margin-bottom: 30px;
+        }
+
+        .feature-tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .feature-tag {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--neon-green);
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 50px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Kelas Antigravity Section */
+        .class-section {
+            background: linear-gradient(to bottom, transparent, rgba(15, 5, 25, 0.3), transparent);
+        }
+
+        .class-flow {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .class-step {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        .class-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 60px;
+            left: 25px;
+            width: 2px;
+            height: calc(100% - 20px);
+            background: linear-gradient(to bottom, var(--neon-blue), transparent);
+        }
+
+        .step-number {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--bg-color);
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 1.2rem;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 25px 35px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            text-align: left;
+            width: 100%;
+        }
+
+        .step-content h3 {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .step-content p {
+            color: #9292b0;
+            font-size: 0.92rem;
+        }
+
+        .antigravity-promo {
+            margin-top: 80px;
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.08), rgba(255, 0, 85, 0.08));
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 30px;
+            padding: 50px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .antigravity-promo h3 {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .antigravity-promo p {
+            max-width: 700px;
+            margin: 0 auto 35px auto;
+            color: #b0b0d0;
+            font-size: 1.05rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 8% 40px 8%;
+            background: rgba(3, 3, 10, 0.95);
+            border-top: 1px solid var(--glass-border);
+            text-align: center;
+            font-size: 0.9rem;
+            color: #606080;
+        }
+
+        .footer-logo {
+            font-family: var(--font-display);
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-bottom: 30px;
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: #a0a0c0;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--neon-blue);
+        }
+
+        /* Animasi Skrol */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .animate-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Media Queries */
+        @media (max-width: 900px) {
+            .hero h1 {
+                font-size: 2.8rem;
+            }
+            .showcase {
+                grid-template-columns: 1fr;
+                padding: 30px;
+            }
+            .nav-links {
+                display: none; /* Simplifikasi untuk mudah alih */
+            }
+            .btn {
+                padding: 15px 30px;
+                font-size: 0.95rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Latar Belakang 3D Canvas -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Navigasi Bar -->
+    <nav>
+        <a href="#" class="logo">SNAKE 3D // AGY</a>
+        <ul class="nav-links">
+            <li><a href="#features">Ciri Game</a></li>
+            <li><a href="#class">Kelas AI</a></li>
+            <li><a href="#about">Gandingan AI</a></li>
+            <li><a href="snake3d.html" class="nav-btn">Main Sekarang</a></li>
+        </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>PERMAINAN ARKED<br>MASA HADAPAN</h1>
+            <p>Alami revolusi permainan klasik Snake dalam dimensi 3D Cyberpunk yang mempesonakan. Dijana sepenuhnya menerusi gandingan pengaturcaraan AI autonomi **Google Antigravity**.</p>
+            <div class="hero-buttons">
+                <a href="snake3d.html" class="btn btn-primary">Main Sekarang</a>
+                <a href="#class" class="btn btn-secondary">Kelas Antigravity</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ciri Utama Section -->
+    <section id="features" class="section animate-on-scroll">
+        <div class="section-header">
+            <p>Ciri-ciri Utama</p>
+            <h2>SNAKE 3D CYBERPUNK</h2>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon">✨</span>
+                <h3>Visual 3D & Bayang Lembut</h3>
+                <p>Scene 3D dinamik dengan PCFSoftShadowMap, memberikan limpahan bayang yang realistik pada grid modular platform.</p>
+            </div>
+            <div class="feature-card" style="border-top-color: var(--neon-pink);">
+                <span class="feature-icon">🐸</span>
+                <h3>Katak 3D Melompat</h3>
+                <p>Katak prosedural comel berwarna merah menyala yang bernyawa dengan animasi lompatan sine-wave berserta regangan.</p>
+            </div>
+            <div class="feature-card" style="border-top-color: var(--neon-yellow);">
+                <span class="feature-icon">👄</span>
+                <h3>Rahang Rahang Buka & Kunyah</h3>
+                <p>Ular 3D bertirus dengan rahang berengsel yang terbuka secara automatik apabila dekat dengan katak dan mengunyah laju setelah makan.</p>
+            </div>
+            <div class="feature-card" style="border-top-color: var(--neon-green);">
+                <span class="feature-icon">🔊</span>
+                <h3>Web Audio API Sintesis</h3>
+                <p>Kesan bunyi retro sintetik (eat & crash) yang dijana secara aturcara masa-nyata tanpa memerlukan sebarang muatan fail fail audio.</p>
+            </div>
+        </div>
+
+        <!-- Showcase Pratonton -->
+        <div class="showcase">
+            <div class="showcase-visual">
+                <img src="assets/screenshot1.png" alt="Tangkapan Skrin Permainan Snake 3D">
+            </div>
+            <div class="showcase-info">
+                <h3>Estetika Neon & Pergerakan Interpolasi LERP</h3>
+                <p>Pergerakan ular diinterpolasikan secara linear untuk menjamin kadar bingkai 60 FPS yang licin, diselaraskan dengan kitaran malam cyberpunk yang beralih tema visual secara perlahan.</p>
+                <div class="feature-tag-list">
+                    <span class="feature-tag">Three.js</span>
+                    <span class="feature-tag">Web Audio API</span>
+                    <span class="feature-tag">Day/Night Cycle</span>
+                    <span class="feature-tag">Minimap</span>
+                    <span class="feature-tag">Leaderboard</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Kelas Google Antigravity Section -->
+    <section id="class" class="section class-section animate-on-scroll">
+        <div class="section-header">
+            <p>Bagaimana Ia Dibina</p>
+            <h2>KELAS AI GOOGLE ANTIGRAVITY</h2>
+        </div>
+
+        <div class="class-flow">
+            <div class="class-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Fasa Perancangan & Spesifikasi (PRD)</h3>
+                    <p>AI meneliti kehendak produk dan menjana Dokumen Keperluan Produk (PRD) yang berstruktur. Logik diatur menggunakan pengaturcaraan berorientasikan objek (OOP) berasaskan kelas modular: Game, Snake, Food, dan ParticleSystem.</p>
+                </div>
+            </div>
+            <div class="class-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Pemodelan Grafik & LERP Motion</h3>
+                    <p>AI membina visual model 3D secara prosedural. Ular disusun sebagai rantaian sfera tirus, manakala katak dibina dari gabungan cylinder/sphere. Pergerakan ditweening menggunakan formula LERP pada render loop 3D.</p>
+                </div>
+            </div>
+            <div class="class-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Integrasi UI Glassmorphism & Audio Synth</h3>
+                    <p>Antara muka (HUD) direka dengan penggayaan CSS Glassmorphic (blur filter, neon glowing border) di atas canvas. Audio sintetik diaturcara terus menerusi Web Audio API untuk kemudahan sedia dimainkan di mana-mana komputer offline.</p>
+                </div>
+            </div>
+            <div class="class-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>Pengesahan & Ujian Autonomi (Chrome DevTools)</h3>
+                    <p>Ejen AI melancarkan browser subagent secara autonomi untuk menavigasi permainan, mengawal ular, memakan makanan, dan mencuba papan pendahulu. Rakaman tangkapan skrin dan video sesi ujian direkodkan secara langsung.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kad Promosi Antigravity AI -->
+        <div id="about" class="antigravity-promo">
+            <h3>Bina Permainan Tanpa Had Dengan Antigravity SDK</h3>
+            <p>Google Antigravity memperkasakan pembangun untuk merealisasikan visual 3D yang premium dan mekanik yang rumit dalam sekelip mata. Sertai gandingan pair-programming bersama AI autonomi hari ini.</p>
+            <a href="snake3d.html" class="btn btn-primary" style="box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">Cuba Demo Game</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">SNAKE 3D // GOOGLE ANTIGRAVITY AI</div>
+        <ul class="footer-links">
+            <li><a href="#features">Ciri Permainan</a></li>
+            <li><a href="#class">Langkah Kelas AI</a></li>
+            <li><a href="snake3d.html">Pautan Permainan</a></li>
+        </ul>
+        <p>&copy; 2026 Projek Snake 3D Cyberpunk. Dibina untuk promosi kelas gandingan AI Google Antigravity.</p>
+    </footer>
+
+    <!-- Muatkan Three.js untuk latar belakang partikel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ==========================================
+        // LATAR BELAKANG PARTIKEL 3D (Three.js Wave)
+        // ==========================================
+        let scene, camera, renderer, particles;
+        const AMOUNTX = 55, AMOUNTY = 55;
+        const SEPARATION = 45;
+        
+        let mouseX = 0, mouseY = 0;
+        let countTime = 0;
+
+        function initBg() {
+            const canvas = document.getElementById('bg-canvas');
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+            camera.position.z = 1000;
+            camera.position.y = 350;
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x03030c, 0.0009);
+
+            const numParticles = AMOUNTX * AMOUNTY;
+            const positions = new Float32Array(numParticles * 3);
+            const colors = new Float32Array(numParticles * 3);
+
+            const colorCyan = new THREE.Color(0x00f0ff);
+            const colorPink = new THREE.Color(0xff0055);
+
+            let i = 0;
+            for (let ix = 0; ix < AMOUNTX; ix++) {
+                for (let iy = 0; iy < AMOUNTY; iy++) {
+                    positions[i] = ix * SEPARATION - ((AMOUNTX * SEPARATION) / 2); // x
+                    positions[i + 1] = 0; // y
+                    positions[i + 2] = iy * SEPARATION - ((AMOUNTY * SEPARATION) / 2); // z
+
+                    // Warna berselang-seli antara cyan dan pink
+                    const mixedColor = (ix + iy) % 2 === 0 ? colorCyan : colorPink;
+                    colors[i] = mixedColor.r;
+                    colors[i + 1] = mixedColor.g;
+                    colors[i + 2] = mixedColor.b;
+
+                    i += 3;
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            // Tekstur bulat bulat bersinar ringkas secara aturcara
+            const pCanvas = document.createElement('canvas');
+            pCanvas.width = 16;
+            pCanvas.height = 16;
+            const pCtx = pCanvas.getContext('2d');
+            const grad = pCtx.createRadialGradient(8, 8, 0, 8, 8, 8);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            pCtx.fillStyle = grad;
+            pCtx.fillRect(0, 0, 16, 16);
+            const pTexture = new THREE.CanvasTexture(pCanvas);
+
+            // Material
+            const material = new THREE.PointsMaterial({
+                size: 6.5,
+                vertexColors: true,
+                map: pTexture,
+                transparent: true,
+                opacity: 0.55,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+
+            // Points
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Mouse Move Event Listener
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('resize', onWindowResize);
+            
+            // Mula Loop Animasi
+            animate();
+        }
+
+        function onMouseMove(event) {
+            mouseX = (event.clientX - window.innerWidth / 2) * 0.16;
+            mouseY = (event.clientY - window.innerHeight / 2) * 0.16;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Pergerakan kamera interaktif meluncur
+            camera.position.x += (mouseX - camera.position.x) * 0.035;
+            camera.position.y += (-mouseY + 300 - camera.position.y) * 0.035;
+            camera.lookAt(scene.position);
+
+            const positions = particles.geometry.attributes.position.array;
+            countTime += 0.03;
+
+            let i = 0;
+            for (let ix = 0; ix < AMOUNTX; ix++) {
+                for (let iy = 0; iy < AMOUNTY; iy++) {
+                    // Formula gelombang sine/cosine
+                    positions[i + 1] = (Math.sin((ix + countTime) * 0.28) * 35) + 
+                                       (Math.sin((iy + countTime) * 0.45) * 35);
+                    i += 3;
+                }
+            }
+
+            particles.geometry.attributes.position.needsUpdate = true;
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('DOMContentLoaded', initBg);
+
+        // ==========================================
+        // ANIMASI SKROL (Intersection Observer)
+        // ==========================================
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

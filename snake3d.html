@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake 3D - Cyberpunk Edition</title>
+    <!-- Muat turun Google Fonts untuk tipografi futuristik -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Reka bentuk Sistem Warna & Pembolehubah */
+        :root {
+            --bg-color: #060612;
+            --neon-green: #39ff14;
+            --neon-red: #ff0055;
+            --neon-blue: #00f0ff;
+            --neon-yellow: #ffea00;
+            --glass-bg: rgba(10, 10, 25, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-color: #f0f0f8;
+            --font-display: 'Orbitron', sans-serif;
+            --font-sans: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-sans);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Container Canvas utama */
+        #canvas-container {
+            width: 100%;
+            height: calc(100% - 32px); /* Mengelakkan pertindihan di bawah dengan marquee bar */
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* HUD Atas Overlay */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .hud-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 15px 25px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            pointer-events: auto;
+            display: flex;
+            gap: 30px;
+        }
+
+        #score-panel {
+            display: flex;
+            align-items: center;
+        }
+
+        .score-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hud-label {
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 2px;
+        }
+
+        .hud-value {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        #high-score-val {
+            color: var(--neon-green);
+            text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+        }
+
+        #right-hud {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 15px;
+        }
+
+        #minimap-container {
+            border: 2px solid var(--neon-blue);
+            border-radius: 50%;
+            overflow: hidden;
+            width: 120px;
+            height: 120px;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+            background: rgba(5, 5, 12, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            pointer-events: auto;
+        }
+
+        #minimap {
+            display: block;
+        }
+
+        /* HUD Bawah Overlay */
+        #bottom-hud {
+            position: absolute;
+            bottom: 80px; /* Ditinggikan lagi untuk ruang gap yang lebih luas */
+            left: 20px;
+            right: 20px;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .info-panel {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .control-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #ffffff;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-display);
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .control-btn:hover {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .fps-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 8px 15px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            color: var(--neon-blue);
+        }
+
+        #fps-val {
+            font-weight: 900;
+            color: #ffffff;
+            margin-left: 5px;
+        }
+
+        /* Skrin Menu Utama (Overlays) */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 3, 10, 0.82);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        .overlay-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .menu-card {
+            background: rgba(10, 10, 25, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
+            padding: 40px;
+            max-width: 520px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 
+                        inset 0 0 30px rgba(0, 240, 255, 0.05);
+            border-top: 3px solid var(--neon-blue);
+            animation: cardPulse 4s infinite alternate;
+        }
+
+        @keyframes cardPulse {
+            0% { box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.1); }
+            100% { box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 45px rgba(0, 240, 255, 0.25); }
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            font-size: 3.2rem;
+            font-weight: 900;
+            margin-bottom: 5px;
+            letter-spacing: 4px;
+            background: linear-gradient(45deg, var(--neon-green), var(--neon-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(0, 240, 255, 0.3));
+        }
+
+        .subtitle {
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            color: #8f8fa8;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .btn {
+            font-family: var(--font-display);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 1.1rem;
+            padding: 16px 38px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            margin: 10px 0;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--neon-green), #1bb803);
+            color: #04040a;
+            box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 30px var(--neon-green);
+        }
+
+        .controls-info {
+            margin: 25px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: left;
+        }
+
+        .controls-info h3 {
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            color: var(--neon-blue);
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .keys-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px 20px;
+            font-size: 0.85rem;
+            color: #a0a0c0;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+
+        .key-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .key {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-weight: 700;
+            color: #ffffff;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.25);
+            font-family: var(--font-display);
+            min-width: 32px;
+            text-align: center;
+        }
+
+        /* Leaderboard */
+        .leaderboard-container {
+            margin-top: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 20px;
+        }
+
+        .leaderboard-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--neon-blue);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            color: #d0d0e0;
+        }
+
+        .leaderboard-table th, .leaderboard-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .leaderboard-table th {
+            font-family: var(--font-display);
+            color: #707090;
+            font-weight: 400;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .leaderboard-table tr:first-child td {
+            color: var(--neon-green);
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
+        }
+
+        /* Game Over Neon Red */
+        h1.game-over-title {
+            color: var(--neon-red);
+            background: none;
+            -webkit-background-clip: unset;
+            -webkit-text-fill-color: unset;
+            filter: drop-shadow(0 0 15px rgba(255, 0, 85, 0.5));
+        }
+
+        #name-input-container {
+            margin: 20px auto;
+            max-width: 320px;
+            display: none;
+        }
+
+        #name-input-container.active {
+            display: block;
+        }
+
+        #player-name {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: #ffffff;
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 12px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        #player-name:focus {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
+        }
+
+        /* Marquee Bar Bawah */
+        #marquee-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 32px;
+            background: rgba(4, 4, 12, 0.9);
+            border-top: 1px solid var(--neon-blue);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            font-family: var(--font-display);
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            box-shadow: 0 -5px 15px rgba(0, 240, 255, 0.15);
+        }
+
+        .marquee-label {
+            background: var(--neon-blue);
+            color: #03030c;
+            padding: 0 15px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-weight: 900;
+            z-index: 110;
+            box-shadow: 5px 0 12px rgba(0, 0, 0, 0.6);
+            flex-shrink: 0;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        .marquee-content {
+            flex-grow: 1;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+
+        #marquee-text {
+            display: inline-block;
+            white-space: nowrap;
+            animation: marqueeAnimation 24s linear infinite;
+            color: var(--neon-yellow);
+            text-shadow: 0 0 8px rgba(255, 234, 0, 0.5);
+            font-weight: 700;
+        }
+
+        @keyframes marqueeAnimation {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <!-- HUD Atas -->
+    <div id="hud">
+        <div id="score-panel" class="hud-panel">
+            <div class="score-box">
+                <span class="hud-label">Skor</span>
+                <div id="score-val" class="hud-value">000</div>
+            </div>
+            <div class="score-box">
+                <span class="hud-label">Rekod</span>
+                <div id="high-score-val" class="hud-value">000</div>
+            </div>
+        </div>
+        <div id="right-hud">
+            <div id="minimap-container">
+                <canvas id="minimap" width="120" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- HUD Bawah -->
+    <div id="bottom-hud">
+        <div class="info-panel">
+            <button id="mute-btn" class="control-btn">
+                <span id="mute-icon">🔊</span> <span id="mute-text">Bunyi Hidup</span>
+            </button>
+            <button id="reset-cam-btn" class="control-btn">
+                🎥 Pandangan Asal
+            </button>
+        </div>
+        <div class="fps-panel">
+            <span>FPS:</span><span id="fps-val">60</span>
+        </div>
+    </div>
+
+    <!-- Marquee Info Bergerak di Bawah -->
+    <div id="marquee-container">
+        <span class="marquee-label">📢 Info Kelas</span>
+        <div class="marquee-content">
+            <span id="marquee-text">Memuatkan maklumat...</span>
+        </div>
+    </div>
+
+    <!-- Skrin Mula (Start Screen) -->
+    <div id="start-screen" class="overlay-screen">
+        <div class="menu-card">
+            <h1>SNAKE 3D</h1>
+            <p class="subtitle">Cyberpunk Edition</p>
+            
+            <button id="start-btn" class="btn btn-primary">Mula Permainan</button>
+            
+            <div class="controls-info">
+                <h3>Kawalan Ular</h3>
+                <div class="keys-grid">
+                    <div class="key-row"><span class="key">W</span> <span>Ke Depan</span></div>
+                    <div class="key-row"><span class="key">A</span> <span>Ke Kiri</span></div>
+                    <div class="key-row"><span class="key">S</span> <span>Ke Belakang</span></div>
+                    <div class="key-row"><span class="key">D</span> <span>Ke Kanan</span></div>
+                </div>
+                <div style="margin-top: 15px; font-size: 0.78rem; color: #757595; text-align: center; line-height: 1.4;">
+                    * Kawalan arah adalah mutlak terhadap grid.<br>
+                    * Klik kiri & seret tetikus untuk memutar kamera.<br>
+                    * Gunakan scroll tetikus untuk zum masuk/keluar.
+                </div>
+            </div>
+            
+            <div class="leaderboard-container">
+                <h3 class="leaderboard-title">🏆 Papan Pendahulu</h3>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">No.</th>
+                            <th style="width: 50%;">Nama</th>
+                            <th style="width: 25%;">Skor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="start-leaderboard-body">
+                        <!-- Dimasukkan secara dinamik melalui JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skrin Game Over -->
+    <div id="game-over-screen" class="overlay-screen hidden">
+        <div class="menu-card" style="border-top-color: var(--neon-red);">
+            <h1 class="game-over-title">GAME OVER</h1>
+            <p class="subtitle">Perlanggaran Terpencat</p>
+            
+            <div style="font-size: 1.4rem; margin-bottom: 20px; font-family: var(--font-display);">
+                SKOR ANDA: <span id="final-score" style="color: var(--neon-red); font-weight: 900; text-shadow: 0 0 10px rgba(255, 0, 85, 0.4);">000</span>
+            </div>
+            
+            <!-- Borang Kemasukan Nama untuk Skor Tertinggi -->
+            <div id="name-input-container">
+                <p style="margin-bottom: 12px; font-size: 0.85rem; color: #a0a0c0; text-transform: uppercase; letter-spacing: 1px;">
+                    🎉 Rekod Baru! Masukkan nama anda:
+                </p>
+                <input type="text" id="player-name" maxlength="10" placeholder="NAMA" autocomplete="off">
+                <button id="submit-score-btn" class="btn btn-primary" style="font-size: 0.9rem; padding: 10px 25px; margin: 0;">Simpan</button>
+            </div>
+            
+            <button id="restart-btn" class="btn btn-primary">Main Semula</button>
+            
+            <div class="leaderboard-container">
+                <h3 class="leaderboard-title">🏆 Skor Tertinggi</h3>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">No.</th>
+                            <th style="width: 50%;">Nama</th>
+                            <th style="width: 25%;">Skor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="game-over-leaderboard-body">
+                        <!-- Dimasukkan secara dinamik -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Muat turun Pustaka Three.js dan OrbitControls melalui CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. SISTEM KESAN BUNYI (Web Audio API)
+        // ==========================================
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+            
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            
+            toggleMute() {
+                this.muted = !this.muted;
+                return this.muted;
+            }
+            
+            playEat() {
+                if (this.muted) return;
+                this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(580, now + 0.08);
+                osc.frequency.exponentialRampToValueAtTime(1100, now + 0.18);
+                
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.22);
+            }
+            
+            playGameOver() {
+                if (this.muted) return;
+                this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                
+                const now = this.ctx.currentTime;
+                
+                // Synth Bunyi Letupan Bes Rendah (Noise + Sine pitch slide)
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(40, now + 0.5);
+                
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.55);
+            }
+        }
+
+        // ==========================================
+        // 2. SISTEM PARTIKEL (Particle System)
+        // ==========================================
+        class ParticleSystem {
+            constructor(scene) {
+                this.scene = scene;
+                this.particles = [];
+            }
+            
+            emit(x, y, z, colorHex = 0xff0055) {
+                const particleCount = 20;
+                // Gunakan geometri kecil Box untuk prestasi optimum
+                const geometry = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const material = new THREE.MeshBasicMaterial({
+                        color: colorHex,
+                        transparent: true,
+                        opacity: 1.0
+                    });
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(x, y, z);
+                    this.scene.add(mesh);
+                    
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 0.04 + Math.random() * 0.08;
+                    const velocity = new THREE.Vector3(
+                        Math.cos(angle) * speed,
+                        0.05 + Math.random() * 0.12,
+                        Math.sin(angle) * speed
+                    );
+                    
+                    this.particles.push({
+                        mesh: mesh,
+                        velocity: velocity,
+                        life: 1.0,
+                        decay: 0.02 + Math.random() * 0.03
+                    });
+                }
+            }
+            
+            update() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.mesh.position.add(p.velocity);
+                    
+                    // Graviti tarik ke bawah
+                    p.velocity.y -= 0.004;
+                    
+                    // Pudar dan kecilkan zarah
+                    p.life -= p.decay;
+                    p.mesh.material.opacity = p.life;
+                    p.mesh.scale.setScalar(p.life);
+                    
+                    if (p.life <= 0) {
+                        this.scene.remove(p.mesh);
+                        p.mesh.geometry.dispose();
+                        p.mesh.material.dispose();
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+            
+            clear() {
+                for (const p of this.particles) {
+                    this.scene.remove(p.mesh);
+                    p.mesh.geometry.dispose();
+                    p.mesh.material.dispose();
+                }
+                this.particles = [];
+            }
+        }
+
+        // ==========================================
+        // 3. KELAS MAKANAN (Food - 3D Katak)
+        // ==========================================
+        class Food {
+            constructor(scene) {
+                this.scene = scene;
+                this.position = { x: 0, z: 0 };
+                
+                // Kumpulan Objek Katak
+                this.mesh = new THREE.Group();
+                
+                // Bahan Visual (Material)
+                const bodyMat = new THREE.MeshStandardMaterial({
+                    color: 0xff3300, // Katak merah neon menyala
+                    emissive: 0x660800,
+                    emissiveIntensity: 0.55,
+                    roughness: 0.15,
+                    metalness: 0.1
+                });
+                
+                const eyeOuterMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
+                const eyeInnerMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                
+                // 1. Badan Katak (Sfera Dipenyekkan)
+                const bodyGeo = new THREE.SphereGeometry(0.35, 16, 16);
+                bodyGeo.scale(1.25, 0.75, 1.0);
+                const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+                bodyMesh.castShadow = true;
+                bodyMesh.receiveShadow = true;
+                this.mesh.add(bodyMesh);
+                
+                // 2. Kepala Katak
+                const headGeo = new THREE.SphereGeometry(0.22, 16, 16);
+                headGeo.scale(1.1, 0.8, 0.9);
+                const headMesh = new THREE.Mesh(headGeo, bodyMat);
+                headMesh.position.set(0, 0.12, -0.25);
+                headMesh.castShadow = true;
+                this.mesh.add(headMesh);
+                
+                // 3. Mata Bulat (Bulging Eyes)
+                const eyeOuterGeo = new THREE.SphereGeometry(0.08, 12, 12);
+                const eyeInnerGeo = new THREE.SphereGeometry(0.045, 12, 12);
+                eyeInnerGeo.scale(1, 1, 0.5);
+                
+                // Mata Kiri
+                const leftEyeO = new THREE.Mesh(eyeOuterGeo, eyeOuterMat);
+                leftEyeO.position.set(-0.12, 0.26, -0.32);
+                const leftEyeI = new THREE.Mesh(eyeInnerGeo, eyeInnerMat);
+                leftEyeI.position.set(-0.12, 0.26, -0.38);
+                this.mesh.add(leftEyeO, leftEyeI);
+                
+                // Mata Kanan
+                const rightEyeO = new THREE.Mesh(eyeOuterGeo, eyeOuterMat);
+                rightEyeO.position.set(0.12, 0.26, -0.32);
+                const rightEyeI = new THREE.Mesh(eyeInnerGeo, eyeInnerMat);
+                rightEyeI.position.set(0.12, 0.26, -0.38);
+                this.mesh.add(rightEyeO, rightEyeI);
+                
+                // 4. Kaki Belakang (Melengkung)
+                const backLegGeo = new THREE.SphereGeometry(0.15, 12, 12);
+                backLegGeo.scale(0.6, 1.1, 1.1);
+                
+                const leftLegB = new THREE.Mesh(backLegGeo, bodyMat);
+                leftLegB.position.set(-0.32, -0.06, 0.08);
+                leftLegB.rotation.set(0.2, 0, -0.25);
+                leftLegB.castShadow = true;
+                
+                const rightLegB = new THREE.Mesh(backLegGeo, bodyMat);
+                rightLegB.position.set(0.32, -0.06, 0.08);
+                rightLegB.rotation.set(0.2, 0, 0.25);
+                rightLegB.castShadow = true;
+                
+                this.mesh.add(leftLegB, rightLegB);
+                
+                // 5. Kaki Depan
+                const frontLegGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.22, 8);
+                
+                const leftLegF = new THREE.Mesh(frontLegGeo, bodyMat);
+                leftLegF.position.set(-0.18, -0.14, -0.2);
+                leftLegF.rotation.z = -0.15;
+                leftLegF.castShadow = true;
+                
+                const rightLegF = new THREE.Mesh(frontLegGeo, bodyMat);
+                rightLegF.position.set(0.2, -0.14, -0.2);
+                rightLegF.rotation.z = 0.15;
+                rightLegF.castShadow = true;
+                
+                this.mesh.add(leftLegF, rightLegF);
+                
+                // PointLight diletakkan di dalam katak untuk kesan Glow pada lantai
+                this.light = new THREE.PointLight(0xff0033, 1.8, 6);
+                this.light.position.set(0, 0.25, 0);
+                this.mesh.add(this.light);
+                
+                this.scene.add(this.mesh);
+                this.hide();
+            }
+            
+            spawn(occupiedPositions, gridSize = 20) {
+                let attempts = 0;
+                let spawned = false;
+                
+                while (attempts < 400 && !spawned) {
+                    const rx = Math.floor(Math.random() * gridSize);
+                    const rz = Math.floor(Math.random() * gridSize);
+                    
+                    const collide = occupiedPositions.some(p => p.x === rx && p.z === rz);
+                    if (!collide) {
+                        this.position.x = rx;
+                        this.position.z = rz;
+                        
+                        const wx = rx - gridSize / 2 + 0.5;
+                        const wz = rz - gridSize / 2 + 0.5;
+                        this.mesh.position.set(wx, 0.3, wz);
+                        this.mesh.rotation.y = Math.random() * Math.PI * 2;
+                        spawned = true;
+                    }
+                    attempts++;
+                }
+                
+                this.show();
+            }
+            
+            update(time) {
+                // Lompatan Katak (sine wave)
+                const timeSecs = time * 0.001;
+                const hop = Math.abs(Math.sin(timeSecs * 6.5)); // Kelajuan melompat
+                
+                // Stretch (meregang) semasa naik, squash (kemek) semasa mendarat
+                const stretch = 1.0 + hop * 0.25;
+                const squash = 1.0 - hop * 0.12;
+                this.mesh.scale.set(squash, stretch, squash);
+                
+                const wx = this.position.x - 20 / 2 + 0.5;
+                const wz = this.position.z - 20 / 2 + 0.5;
+                this.mesh.position.y = 0.25 + hop * 0.32;
+                
+                // Putaran wiggling lembut katak
+                this.mesh.rotation.y += Math.sin(timeSecs * 3) * 0.005;
+                
+                // Denyutan keamatan cahaya
+                const pulse = 1.0 + Math.sin(timeSecs * 6.5) * 0.4;
+                this.light.intensity = 1.2 + pulse * 0.8;
+            }
+            
+            hide() {
+                this.mesh.visible = false;
+            }
+            
+            show() {
+                this.mesh.visible = true;
+            }
+            
+            destroy() {
+                this.scene.remove(this.mesh);
+                this.mesh.traverse(child => {
+                    if (child.isMesh) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(m => m.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ==========================================
+        // 4. KELAS ULAR (Snake - Realistik)
+        // ==========================================
+        class Snake {
+            constructor(scene, gridSize = 20) {
+                this.scene = scene;
+                this.gridSize = gridSize;
+                this.segments = []; // array bagi objek: { x, z, prevX, prevZ, mesh }
+                this.direction = { x: 0, z: -1 }; // Arah pergerakan asal: Ke Depan (Utara)
+                this.nextDirection = { x: 0, z: -1 };
+                this.growPending = false;
+                this.chewTime = 0;
+                
+                // Bahan Visual (Material)
+                this.headMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x39ff14, // Hijau neon
+                    emissive: 0x0a4d04,
+                    emissiveIntensity: 0.5,
+                    roughness: 0.2,
+                    metalness: 0.1
+                });
+                
+                this.bodyMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffea00, // Kuning terang neon
+                    emissive: 0x332a00, // Glow kuning malap dalam gelap
+                    roughness: 0.35,
+                    metalness: 0.1
+                });
+                
+                // Membina ular sepanjang 3 blok di tengah-tengah grid
+                const startX = Math.floor(gridSize / 2);
+                const startZ = Math.floor(gridSize / 2);
+                
+                this.addSegment(startX, startZ);
+                this.addSegment(startX, startZ + 1);
+                this.addSegment(startX, startZ + 2);
+            }
+            
+            addSegment(x, z) {
+                const isHead = this.segments.length === 0;
+                let mesh;
+                
+                if (isHead) {
+                    // Cipta Kumpulan Kepala
+                    mesh = new THREE.Group();
+                    
+                    // Rahang Atas (Upper Jaw)
+                    const upperGeo = new THREE.SphereGeometry(0.45, 16, 16);
+                    upperGeo.scale(1.0, 0.6, 1.2);
+                    const upperMesh = new THREE.Mesh(upperGeo, this.headMaterial);
+                    upperMesh.position.set(0, 0.1, 0);
+                    upperMesh.castShadow = true;
+                    mesh.add(upperMesh);
+                    
+                    // Rahang Bawah (Lower Jaw - Hinged)
+                    const lowerGeo = new THREE.SphereGeometry(0.43, 16, 16);
+                    lowerGeo.scale(1.0, 0.4, 1.15);
+                    this.lowerJawMesh = new THREE.Mesh(lowerGeo, this.headMaterial);
+                    this.lowerJawMesh.position.set(0, -0.05, 0.05);
+                    this.lowerJawMesh.castShadow = true;
+                    mesh.add(this.lowerJawMesh);
+                    
+                    // Sepasang Mata Bersinar
+                    const eyeGeo = new THREE.SphereGeometry(0.09, 12, 12);
+                    const eyeMat = new THREE.MeshStandardMaterial({
+                        color: 0xffcc00,
+                        emissive: 0xffaa00,
+                        emissiveIntensity: 0.85,
+                        roughness: 0.1
+                    });
+                    const pupilGeo = new THREE.SphereGeometry(0.05, 8, 8);
+                    pupilGeo.scale(1, 1, 0.5);
+                    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                    
+                    // Mata Kiri
+                    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+                    leftEye.position.set(-0.25, 0.22, -0.15);
+                    const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+                    leftPupil.position.set(-0.25, 0.22, -0.22);
+                    mesh.add(leftEye, leftPupil);
+                    
+                    // Mata Kanan
+                    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+                    rightEye.position.set(0.25, 0.22, -0.15);
+                    const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+                    rightPupil.position.set(0.25, 0.22, -0.22);
+                    mesh.add(rightEye, rightPupil);
+                    
+                    // Lidah Bercabang
+                    const tongueGroup = new THREE.Group();
+                    const baseGeo = new THREE.BoxGeometry(0.04, 0.015, 0.3);
+                    const tongueMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+                    const baseMesh = new THREE.Mesh(baseGeo, tongueMat);
+                    tongueGroup.add(baseMesh);
+                    
+                    const forkL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.12), tongueMat);
+                    forkL.position.set(-0.025, 0, -0.18);
+                    forkL.rotation.y = 0.45;
+                    const forkR = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.12), tongueMat);
+                    forkR.position.set(0.025, 0, -0.18);
+                    forkR.rotation.y = -0.45;
+                    
+                    tongueGroup.add(forkL, forkR);
+                    tongueGroup.position.set(0, -0.04, -0.32);
+                    mesh.add(tongueGroup);
+                    this.tongue = tongueGroup;
+                    
+                } else {
+                    // Segmen Badan adalah Sfera (Spheres)
+                    const bodyGeo = new THREE.SphereGeometry(0.44, 16, 16);
+                    mesh = new THREE.Mesh(bodyGeo, this.bodyMaterial);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                }
+                
+                const wx = x - this.gridSize / 2 + 0.5;
+                const wz = z - this.gridSize / 2 + 0.5;
+                mesh.position.set(wx, 0.42, wz);
+                
+                this.scene.add(mesh);
+                
+                this.segments.push({
+                    x: x,
+                    z: z,
+                    prevX: x,
+                    prevZ: z,
+                    mesh: mesh
+                });
+            }
+            
+            changeDirection(newDir) {
+                if (this.direction.x + newDir.x === 0 && this.direction.z + newDir.z === 0) {
+                    return;
+                }
+                this.nextDirection = newDir;
+            }
+            
+            step() {
+                this.direction = this.nextDirection;
+                const head = this.segments[0];
+                
+                for (let i = 0; i < this.segments.length; i++) {
+                    this.segments[i].prevX = this.segments[i].x;
+                    this.segments[i].prevZ = this.segments[i].z;
+                }
+                
+                const newHeadX = head.x + this.direction.x;
+                const newHeadZ = head.z + this.direction.z;
+                
+                // Pengesanan Dinding
+                if (newHeadX < 0 || newHeadX >= this.gridSize || newHeadZ < 0 || newHeadZ >= this.gridSize) {
+                    return false;
+                }
+                
+                // Pengesanan Badan Sendiri
+                for (let i = 1; i < this.segments.length; i++) {
+                    if (this.segments[i].x === newHeadX && this.segments[i].z === newHeadZ) {
+                        return false;
+                    }
+                }
+                
+                if (this.growPending) {
+                    const last = this.segments[this.segments.length - 1];
+                    this.addSegment(last.x, last.z);
+                    this.growPending = false;
+                }
+                
+                for (let i = this.segments.length - 1; i > 0; i--) {
+                    this.segments[i].x = this.segments[i - 1].x;
+                    this.segments[i].z = this.segments[i - 1].z;
+                }
+                
+                head.x = newHeadX;
+                head.z = newHeadZ;
+                
+                return true;
+            }
+            
+            update(lerpProgress) {
+                // LERP pergerakan dan pengecilan saiz badan (tapering)
+                for (let i = 0; i < this.segments.length; i++) {
+                    const seg = this.segments[i];
+                    
+                    const lx = THREE.MathUtils.lerp(seg.prevX, seg.x, lerpProgress);
+                    const lz = THREE.MathUtils.lerp(seg.prevZ, seg.z, lerpProgress);
+                    
+                    const wx = lx - this.gridSize / 2 + 0.5;
+                    const wz = lz - this.gridSize / 2 + 0.5;
+                    
+                    seg.mesh.position.x = wx;
+                    seg.mesh.position.z = wz;
+                    
+                    // Mengurangkan saiz segmen dari kepala ke ekor (Tapering)
+                    let scaleFactor = 1.0;
+                    if (i > 0) {
+                        scaleFactor = Math.max(0.42, 1.0 - (i / (this.segments.length - 1)) * 0.48);
+                    }
+                    seg.mesh.scale.setScalar(scaleFactor);
+                    
+                    // Putar kepala ular mengikut arah pergerakan semasa
+                    if (i === 0) {
+                        const angle = Math.atan2(-this.direction.x, -this.direction.z);
+                        seg.mesh.rotation.y = angle;
+                    }
+                }
+            }
+            
+            animateHead(dist, time) {
+                if (!this.lowerJawMesh || !this.tongue) return;
+                
+                // Lidah terjelir-jelir (tongue flicking)
+                this.tongue.position.z = -0.32 - Math.max(0, Math.sin(time * 0.012)) * 0.15;
+                
+                let targetRotation = 0;
+                
+                if (this.chewTime > 0) {
+                    this.chewTime--;
+                    // Chewing: Buka mulut dengan pantas 
+                    targetRotation = Math.abs(Math.sin(this.chewTime * 0.45)) * 0.45;
+                } else if (dist < 2.5) {
+                    // Buka mulut secara automatik mengikut jarak ke katak
+                    targetRotation = (1.0 - (dist / 2.5)) * 0.58;
+                }
+                
+                this.lowerJawMesh.rotation.x = THREE.MathUtils.lerp(this.lowerJawMesh.rotation.x, targetRotation, 0.18);
+            }
+            
+            getOccupiedPositions() {
+                return this.segments.map(seg => ({ x: seg.x, z: seg.z }));
+            }
+            
+            clear() {
+                for (const seg of this.segments) {
+                    this.scene.remove(seg.mesh);
+                    seg.mesh.traverse(child => {
+                        if (child.isMesh) {
+                            if (child.geometry) child.geometry.dispose();
+                        }
+                    });
+                }
+                this.segments = [];
+            }
+        }
+
+        // ==========================================
+        // 5. ENGINE UTAMA PERMAINAN (Game)
+        // ==========================================
+        class Game {
+            constructor() {
+                this.gridSize = 20;
+                this.score = 0;
+                this.highScore = 0;
+                this.state = 'START'; // Keadaan permainan: START, PLAYING, GAMEOVER
+                
+                this.tickInterval = 200; // Selang masa antara pergerakan logik (ms)
+                this.lastTickTime = 0;
+                this.frameCount = 0;
+                this.fpsLastUpdateTime = 0;
+                
+                this.soundEffects = new SoundEffects();
+                
+                this.setupThree();
+                this.setupLights();
+                this.setupArena();
+                this.setupEvents();
+                this.loadHighScore();
+                
+                this.particleSystem = new ParticleSystem(this.scene);
+                this.food = new Food(this.scene);
+                this.snake = null;
+                
+                this.renderLeaderboard();
+                
+                // Mula loop animasi utama pelayar
+                requestAnimationFrame((t) => this.animate(t));
+            }
+            
+            setupThree() {
+                const container = document.getElementById('canvas-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x060612);
+                
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+                this.camera.position.set(0, 14.5, 14.5);
+                
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(width, height);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                container.appendChild(this.renderer.domElement);
+                
+                // OrbitControls untuk putaran kamera bebas
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.maxPolarAngle = Math.PI / 2.05; // Elak kamera jatuh bawah platform
+                this.controls.minDistance = 5;
+                this.controls.maxDistance = 35;
+                this.controls.target.set(0, -2.2, 1.8);
+                this.controls.update();
+            }
+            
+            setupLights() {
+                // Ambient Light
+                this.ambientLight = new THREE.AmbientLight(0x111122, 0.5);
+                this.scene.add(this.ambientLight);
+                
+                // Directional Light dengan keupayaan bayang
+                this.dirLight = new THREE.DirectionalLight(0x3333ff, 0.85);
+                this.dirLight.position.set(10, 20, 8);
+                this.dirLight.castShadow = true;
+                this.dirLight.shadow.mapSize.width = 1024;
+                this.dirLight.shadow.mapSize.height = 1024;
+                this.dirLight.shadow.camera.near = 0.5;
+                this.dirLight.shadow.camera.far = 40;
+                
+                const d = 14;
+                this.dirLight.shadow.camera.left = -d;
+                this.dirLight.shadow.camera.right = d;
+                this.dirLight.shadow.camera.top = d;
+                this.dirLight.shadow.camera.bottom = -d;
+                this.dirLight.shadow.bias = -0.0005;
+                
+                this.scene.add(this.dirLight);
+            }
+            
+            setupArena() {
+                // Platform Utama
+                const platformGeo = new THREE.BoxGeometry(this.gridSize, 0.4, this.gridSize);
+                
+                // Menghasilkan Tekstur Grid Secara Prosedural
+                const tileTexture = this.createGridTexture();
+                
+                const platformMat = new THREE.MeshStandardMaterial({
+                    color: 0x0c0c1b,
+                    map: tileTexture,
+                    roughness: 0.35,
+                    metalness: 0.65
+                });
+                
+                const platform = new THREE.Mesh(platformGeo, platformMat);
+                platform.position.y = -0.2; // Rata di y=0
+                platform.receiveShadow = true;
+                this.scene.add(platform);
+                
+                // Pagar / Bingkai Neon Ringkas Di Sekeliling Sempadan
+                const borderGeo = new THREE.BoxGeometry(this.gridSize + 0.4, 0.5, 0.2);
+                const borderMat = new THREE.MeshStandardMaterial({
+                    color: 0x00f0ff,
+                    emissive: 0x003344,
+                    roughness: 0.2
+                });
+                
+                // Pagar Utara, Selatan, Timur, Barat
+                const positions = [
+                    { x: 0, z: -this.gridSize/2 - 0.1, ry: 0 },
+                    { x: 0, z: this.gridSize/2 + 0.1, ry: 0 },
+                    { x: -this.gridSize/2 - 0.1, z: 0, ry: Math.PI / 2 },
+                    { x: this.gridSize/2 + 0.1, z: 0, ry: Math.PI / 2 }
+                ];
+                
+                for (const pos of positions) {
+                    const bMesh = new THREE.Mesh(borderGeo, borderMat);
+                    bMesh.position.set(pos.x, 0.05, pos.z);
+                    bMesh.rotation.y = pos.ry;
+                    bMesh.castShadow = true;
+                    bMesh.receiveShadow = true;
+                    this.scene.add(bMesh);
+                }
+            }
+            
+            createGridTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                
+                // Warna latar belakang jubin
+                ctx.fillStyle = '#060613';
+                ctx.fillRect(0, 0, 128, 128);
+                
+                ctx.fillStyle = '#0a0a20';
+                ctx.fillRect(2, 2, 124, 124);
+                
+                // Garisan sempadan jubin
+                ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(1, 1, 126, 126);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(this.gridSize, this.gridSize);
+                return texture;
+            }
+            
+            setupEvents() {
+                // Window Resize
+                window.addEventListener('resize', () => this.handleResize());
+                
+                // Keyboard Input
+                window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+                
+                // Klik Mula
+                document.getElementById('start-btn').addEventListener('click', () => {
+                    this.soundEffects.init();
+                    this.startGame();
+                });
+                
+                // Klik Restart
+                document.getElementById('restart-btn').addEventListener('click', () => {
+                    this.startGame();
+                });
+                
+                // Mute Bunyi
+                document.getElementById('mute-btn').addEventListener('click', () => {
+                    const isMuted = this.soundEffects.toggleMute();
+                    document.getElementById('mute-icon').innerText = isMuted ? '🔇' : '🔊';
+                    document.getElementById('mute-text').innerText = isMuted ? 'Bunyi Senyap' : 'Bunyi Hidup';
+                });
+                
+                // Reset Kamera
+                document.getElementById('reset-cam-btn').addEventListener('click', () => {
+                    this.resetCamera();
+                });
+                
+                // Simpan Papan Pendahulu
+                document.getElementById('submit-score-btn').addEventListener('click', () => {
+                    this.submitHighScore();
+                });
+            }
+            
+            handleResize() {
+                const container = document.getElementById('canvas-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(width, height);
+            }
+            
+            handleKeyDown(e) {
+                if (this.state !== 'PLAYING') return;
+                
+                // Menentukan kawalan grid mutlak
+                switch (e.key.toLowerCase()) {
+                    case 'w':
+                    case 'arrowup':
+                        // Sekat daripada patah balik ke S
+                        if (this.snake.direction.z !== 1) {
+                            this.snake.changeDirection({ x: 0, z: -1 });
+                        }
+                        break;
+                    case 's':
+                    case 'arrowdown':
+                        // Sekat daripada patah balik ke W
+                        if (this.snake.direction.z !== -1) {
+                            this.snake.changeDirection({ x: 0, z: 1 });
+                        }
+                        break;
+                    case 'a':
+                    case 'arrowleft':
+                        // Sekat daripada patah balik ke D
+                        if (this.snake.direction.x !== 1) {
+                            this.snake.changeDirection({ x: -1, z: 0 });
+                        }
+                        break;
+                    case 'd':
+                    case 'arrowright':
+                        // Sekat daripada patah balik ke A
+                        if (this.snake.direction.x !== -1) {
+                            this.snake.changeDirection({ x: 1, z: 0 });
+                        }
+                        break;
+                }
+            }
+            
+            resetCamera() {
+                this.controls.reset();
+                this.camera.position.set(0, 14.5, 14.5);
+                this.controls.target.set(0, -2.2, 1.8);
+                this.controls.update();
+            }
+            
+            startGame() {
+                // Reset HUD & Game state
+                this.score = 0;
+                this.tickInterval = 200;
+                document.getElementById('score-val').innerText = '000';
+                
+                // Clear state lama
+                if (this.snake) this.snake.clear();
+                this.particleSystem.clear();
+                
+                // Setup Ular & Makanan Baru
+                this.snake = new Snake(this.scene, this.gridSize);
+                this.food.spawn(this.snake.getOccupiedPositions(), this.gridSize);
+                
+                // Tutup semua Overlays
+                document.getElementById('start-screen').classList.add('hidden');
+                document.getElementById('game-over-screen').classList.add('hidden');
+                document.getElementById('name-input-container').classList.remove('active');
+                
+                this.state = 'PLAYING';
+                this.lastTickTime = performance.now();
+                this.resetCamera();
+            }
+            
+            gameTick() {
+                if (this.state !== 'PLAYING') return;
+                
+                // Gerakkan ular secara logik
+                const alive = this.snake.step();
+                if (!alive) {
+                    this.gameOver();
+                    return;
+                }
+                
+                // Semak perlanggaran makanan
+                const head = this.snake.segments[0];
+                if (head.x === this.food.position.x && head.z === this.food.position.z) {
+                    this.score += 10;
+                    document.getElementById('score-val').innerText = String(this.score).padStart(3, '0');
+                    
+                    // Kesan Bunyi
+                    this.soundEffects.playEat();
+                    
+                    // Letupan partikel
+                    const wx = head.x - this.gridSize / 2 + 0.5;
+                    const wz = head.z - this.gridSize / 2 + 0.5;
+                    this.particleSystem.emit(wx, 0.45, wz, 0xff0055);
+                    
+                    // Cetus animasi mengunyah kepala ular
+                    this.snake.chewTime = 32;
+                    
+                    // Panjangkan ular
+                    this.snake.growPending = true;
+                    
+                    // Jana makanan baru
+                    this.food.spawn(this.snake.getOccupiedPositions(), this.gridSize);
+                    
+                    // Tingkatkan kelajuan berdasarkan skor
+                    this.tickInterval = Math.max(75, 200 - Math.floor(this.score / 40) * 8);
+                }
+                
+                this.lastTickTime = performance.now();
+            }
+            
+            gameOver() {
+                this.state = 'GAMEOVER';
+                this.soundEffects.playGameOver();
+                
+                // Tunjuk UI Game Over
+                document.getElementById('final-score').innerText = String(this.score).padStart(3, '0');
+                document.getElementById('game-over-screen').classList.remove('hidden');
+                
+                // Semak kelayakan Papan Pendahulu
+                if (this.isLeaderboardScore(this.score)) {
+                    document.getElementById('name-input-container').classList.add('active');
+                    document.getElementById('player-name').focus();
+                }
+                
+                this.renderLeaderboard();
+            }
+            
+            // ==========================================
+            // LOGIK PAPAN PENDAHULU & STORAGE
+            // ==========================================
+            loadHighScore() {
+                const scores = this.getLeaderboardData();
+                this.highScore = scores.length > 0 ? scores[0].score : 0;
+                document.getElementById('high-score-val').innerText = String(this.highScore).padStart(3, '0');
+            }
+            
+            getLeaderboardData() {
+                const raw = localStorage.getItem('snake3d_leaderboard');
+                if (!raw) return [];
+                try {
+                    return JSON.parse(raw);
+                } catch(e) {
+                    return [];
+                }
+            }
+            
+            isLeaderboardScore(score) {
+                if (score <= 0) return false;
+                const data = this.getLeaderboardData();
+                if (data.length < 5) return true;
+                return score > data[data.length - 1].score;
+            }
+            
+            submitHighScore() {
+                const nameInput = document.getElementById('player-name');
+                const name = nameInput.value.trim().toUpperCase() || 'PLAYER';
+                
+                let data = this.getLeaderboardData();
+                data.push({ name, score: this.score, date: new Date().toLocaleDateString() });
+                
+                // Susun menurun
+                data.sort((a, b) => b.score - a.score);
+                data = data.slice(0, 5);
+                
+                localStorage.setItem('snake3d_leaderboard', JSON.stringify(data));
+                
+                // Kemas kini paparan
+                nameInput.value = '';
+                document.getElementById('name-input-container').classList.remove('active');
+                this.loadHighScore();
+                this.renderLeaderboard();
+            }
+            
+            renderLeaderboard() {
+                const data = this.getLeaderboardData();
+                const makeRows = (list) => {
+                    if (list.length === 0) {
+                        return `<tr><td colspan="3" style="text-align: center; color: #606080;">Tiada rekod data lagi</td></tr>`;
+                    }
+                    return list.map((item, index) => `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${item.name}</td>
+                            <td>${String(item.score).padStart(3, '0')}</td>
+                        </tr>
+                    `).join('');
+                };
+                
+                document.getElementById('start-leaderboard-body').innerHTML = makeRows(data);
+                document.getElementById('game-over-leaderboard-body').innerHTML = makeRows(data);
+            }
+            
+            // ==========================================
+            // KITARAN SIANG / MALAM DINAMIK (Dusk/Night Morph)
+            // ==========================================
+            updateDayNight(time) {
+                const timeSecs = time * 0.001;
+                // Kitaran lengkap warna persekitaran setiap 30 saat
+                const cycle = (timeSecs / 30.0) % 3.0;
+                const themeIdx = Math.floor(cycle);
+                const lerpFactor = cycle - themeIdx;
+                
+                // Tiga tema cyberpunk neon gelap
+                const themes = [
+                    { bg: new THREE.Color(0x050510), amb: new THREE.Color(0x101020), dir: new THREE.Color(0x00f0ff) }, // Neon Blue
+                    { bg: new THREE.Color(0x0e020a), amb: new THREE.Color(0x1a0a1a), dir: new THREE.Color(0xff0055) }, // Neon Magenta
+                    { bg: new THREE.Color(0x010b0a), amb: new THREE.Color(0x081a18), dir: new THREE.Color(0x39ff14) }  // Neon Green
+                ];
+                
+                const curBg = new THREE.Color();
+                const curAmb = new THREE.Color();
+                const curDir = new THREE.Color();
+                
+                const tA = themes[themeIdx];
+                const tB = themes[(themeIdx + 1) % themes.length];
+                
+                curBg.lerpColors(tA.bg, tB.bg, lerpFactor);
+                curAmb.lerpColors(tA.amb, tB.amb, lerpFactor);
+                curDir.lerpColors(tA.dir, tB.dir, lerpFactor);
+                
+                this.scene.background = curBg;
+                this.renderer.setClearColor(curBg);
+                this.ambientLight.color.copy(curAmb);
+                this.dirLight.color.copy(curDir);
+            }
+            
+            // ==========================================
+            // RENDER MINIMAP 2D CANVAS
+            // ==========================================
+            updateMinimap() {
+                const canvas = document.getElementById('minimap');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, 120, 120);
+                
+                // Fill Background minimap
+                ctx.fillStyle = 'rgba(5, 5, 15, 0.8)';
+                ctx.fillRect(0, 0, 120, 120);
+                
+                const scale = 120 / this.gridSize; // 6px per grid square
+                
+                // Draw grid lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= this.gridSize; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * scale, 0);
+                    ctx.lineTo(i * scale, 120);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * scale);
+                    ctx.lineTo(120, i * scale);
+                    ctx.stroke();
+                }
+                
+                // Draw Snake on minimap
+                if (this.snake && this.snake.segments.length > 0) {
+                    ctx.fillStyle = '#ffea00'; // Body
+                    for (let i = 1; i < this.snake.segments.length; i++) {
+                        const seg = this.snake.segments[i];
+                        ctx.fillRect(seg.x * scale + 1, seg.z * scale + 1, scale - 2, scale - 2);
+                    }
+                    
+                    const head = this.snake.segments[0];
+                    ctx.fillStyle = '#39ff14'; // Head
+                    ctx.fillRect(head.x * scale + 1, head.z * scale + 1, scale - 2, scale - 2);
+                }
+                
+                // Draw Food
+                if (this.food && this.food.mesh.visible) {
+                    ctx.fillStyle = '#ff0055';
+                    ctx.beginPath();
+                    ctx.arc(
+                        this.food.position.x * scale + scale / 2,
+                        this.food.position.z * scale + scale / 2,
+                        scale / 2 - 1,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+            }
+            
+            // ==========================================
+            // ANIMASI UTAMA LOOP (60 FPS)
+            // ==========================================
+            animate(time) {
+                // Meminta render frame seterusnya daripada browser
+                requestAnimationFrame((t) => this.animate(t));
+                
+                if (this.state === 'PLAYING') {
+                    const now = performance.now();
+                    
+                    // Semak jika tiba masa tick pergerakan logik seterusnya
+                    if (now - this.lastTickTime >= this.tickInterval) {
+                        this.gameTick();
+                    }
+                    
+                    // Mengira faktor LERP (0.0 ke 1.0) untuk melicinkan animasi pergerakan
+                    const elapsed = now - this.lastTickTime;
+                    let lerpProgress = elapsed / this.tickInterval;
+                    if (lerpProgress > 1.0) lerpProgress = 1.0;
+                    
+                    if (this.snake) {
+                        this.snake.update(lerpProgress);
+                        
+                        // Kirakan jarak ke katak untuk membuka mulut ular
+                        const headMesh = this.snake.segments[0].mesh;
+                        const foodMesh = this.food.mesh;
+                        if (headMesh && foodMesh) {
+                            const dist = headMesh.position.distanceTo(foodMesh.position);
+                            this.snake.animateHead(dist, time);
+                        }
+                    }
+                    this.food.update(time);
+                    this.particleSystem.update();
+                    this.updateDayNight(time);
+                    this.updateMinimap();
+                }
+                
+                // Kemas kini kawalan tetikus
+                if (this.controls) this.controls.update();
+                
+                // Pemaparan babak Three.js
+                this.renderer.render(this.scene, this.camera);
+                
+                // Pemantauan Kadar Bingkai Sesaat (FPS Counter)
+                this.frameCount++;
+                if (time - this.fpsLastUpdateTime >= 500) {
+                    const fps = Math.round((this.frameCount * 1000) / (time - this.fpsLastUpdateTime));
+                    document.getElementById('fps-val').innerText = fps;
+                    this.frameCount = 0;
+                    this.fpsLastUpdateTime = time;
+                }
+            }
+        }
+
+        // ==========================================
+        // INITIALIZE PERMAINAN
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            new Game();
+            
+            // Membaca mesej info daripada info.txt secara dinamik
+            fetch('info.txt')
+                .then(response => response.text())
+                .then(text => {
+                    if (text && text.trim()) {
+                        document.getElementById('marquee-text').innerText = text.trim();
+                    }
+                })
+                .catch(() => {
+                    // Fallback sekiranya fetch gagal
+                    document.getElementById('marquee-text').innerText = "Jika berminat dengan kelas IT programming sila layari https://hdir.my";
+                });
+        });
+    </script>
+</body>
+</html>
