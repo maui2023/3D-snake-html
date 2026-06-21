@@ -468,11 +468,165 @@
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
         }
+
+        /* D-Pad Controller Maya Mudah Alih */
+        #mobile-controller {
+            display: none; /* Tersembunyi di desktop */
+            position: absolute;
+            bottom: 32px; /* Di atas bar info bergerak */
+            left: 0;
+            width: 100%;
+            height: calc(45% - 32px); /* Mengambil 45% skrin bawah tolak marquee */
+            background: rgba(4, 4, 12, 0.95);
+            border-top: 1px solid var(--glass-border);
+            z-index: 50;
+            pointer-events: auto;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dpad {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 180px;
+            height: 180px;
+            position: relative;
+        }
+
+        .dpad-row {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .dpad-row-middle {
+            justify-content: space-between;
+            align-items: center;
+            margin: 2px 0;
+        }
+
+        .dpad-center {
+            width: 54px;
+            height: 54px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+        }
+
+        .dpad-btn {
+            width: 56px;
+            height: 56px;
+            background: var(--glass-bg);
+            border: 2px solid var(--neon-blue);
+            border-radius: 16px;
+            color: var(--neon-blue);
+            font-size: 1.4rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2), 
+                        inset 0 0 8px rgba(0, 240, 255, 0.05);
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+            outline: none;
+        }
+
+        .dpad-btn:active {
+            background: rgba(0, 240, 255, 0.25);
+            box-shadow: 0 0 20px var(--neon-blue);
+            transform: scale(0.92);
+        }
+
+        #dpad-up, #dpad-down {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+        }
+
+        #dpad-up:active, #dpad-down:active {
+            background: rgba(57, 255, 20, 0.25);
+            box-shadow: 0 0 20px var(--neon-green);
+        }
+
+        /* Responsive Gaya Mudah Alih */
+        @media (max-width: 768px) {
+            #canvas-container {
+                height: 55% !important; /* Bataskan tinggi canvas di atas */
+            }
+            #mobile-controller {
+                display: flex !important; /* Paparkan D-pad di mudah alih */
+            }
+            #bottom-hud {
+                bottom: calc(45% + 15px) !important; /* Naikkan hud bawah ke atas D-Pad */
+            }
+            #hud {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+            .hud-panel {
+                padding: 8px 15px;
+                gap: 12px;
+            }
+            .hud-value {
+                font-size: 1.25rem;
+            }
+            #minimap-container {
+                width: 75px;
+                height: 75px;
+            }
+            .fps-panel {
+                font-size: 0.72rem;
+                padding: 6px 10px;
+            }
+            .menu-card {
+                padding: 22px;
+                max-height: 90%;
+                overflow-y: auto;
+                border-radius: 20px;
+            }
+            h1 {
+                font-size: 2.1rem;
+            }
+            .subtitle {
+                font-size: 0.8rem;
+                margin-bottom: 12px;
+            }
+            .btn {
+                padding: 12px 24px;
+                font-size: 0.95rem;
+            }
+            .controls-info {
+                display: none; /* Sembunyikan info keyboard pada telefon */
+            }
+        }
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
+
+    <!-- D-Pad Controller Maya Mudah Alih -->
+    <div id="mobile-controller">
+        <div class="dpad">
+            <div class="dpad-row">
+                <button id="dpad-up" class="dpad-btn">▲</button>
+            </div>
+            <div class="dpad-row dpad-row-middle">
+                <button id="dpad-left" class="dpad-btn">◀</button>
+                <div class="dpad-center"></div>
+                <button id="dpad-right" class="dpad-btn">▶</button>
+            </div>
+            <div class="dpad-row">
+                <button id="dpad-down" class="dpad-btn">▼</button>
+            </div>
+        </div>
+    </div>
 
     <!-- HUD Atas -->
     <div id="hud">
@@ -1196,14 +1350,18 @@
                 const container = document.getElementById('canvas-container');
                 const width = container.clientWidth;
                 const height = container.clientHeight;
+                const aspect = width / height;
                 
                 // Scene
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0x060612);
                 
                 // Camera
-                this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-                this.camera.position.set(0, 14.5, 14.5);
+                this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
+                
+                // Pelarasan zoom kamera untuk skrin menegak mudah alih (auto-zoom)
+                const zoomFactor = Math.max(1.0, 1.75 / aspect);
+                this.camera.position.set(0, 14.5 * zoomFactor, 14.5 * zoomFactor);
                 
                 // Renderer
                 this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -1219,8 +1377,8 @@
                 this.controls.dampingFactor = 0.05;
                 this.controls.maxPolarAngle = Math.PI / 2.05; // Elak kamera jatuh bawah platform
                 this.controls.minDistance = 5;
-                this.controls.maxDistance = 35;
-                this.controls.target.set(0, -2.2, 1.8);
+                this.controls.maxDistance = 50; // Had maksimum diperluas untuk mod potret zoom-out
+                this.controls.target.set(0, -2.2 * zoomFactor, 1.8 * zoomFactor);
                 this.controls.update();
             }
             
@@ -1352,13 +1510,50 @@
                 document.getElementById('submit-score-btn').addEventListener('click', () => {
                     this.submitHighScore();
                 });
+
+                // Sambung Kawalan Mobile D-Pad
+                const bindDpad = (id, direction) => {
+                    const btn = document.getElementById(id);
+                    if (!btn) return;
+                    
+                    const handlePress = (e) => {
+                        e.preventDefault();
+                        if (this.state !== 'PLAYING') return;
+                        
+                        // Sekat daripada bergerak ke arah bertentangan
+                        if (direction.z !== 0 && this.snake.direction.z !== -direction.z) {
+                            this.snake.changeDirection(direction);
+                        }
+                        if (direction.x !== 0 && this.snake.direction.x !== -direction.x) {
+                            this.snake.changeDirection(direction);
+                        }
+                    };
+                    
+                    btn.addEventListener('touchstart', handlePress, { passive: false });
+                    btn.addEventListener('mousedown', handlePress);
+                };
+
+                bindDpad('dpad-up', { x: 0, z: -1 });
+                bindDpad('dpad-down', { x: 0, z: 1 });
+                bindDpad('dpad-left', { x: -1, z: 0 });
+                bindDpad('dpad-right', { x: 1, z: 0 });
             }
             
             handleResize() {
                 const container = document.getElementById('canvas-container');
                 const width = container.clientWidth;
                 const height = container.clientHeight;
-                this.camera.aspect = width / height;
+                const aspect = width / height;
+                
+                this.camera.aspect = aspect;
+                
+                // Laraskan zoom kamera secara dinamik untuk skrin potret menegak (Mobile Mode)
+                const zoomFactor = Math.max(1.0, 1.75 / aspect);
+                
+                this.camera.position.set(0, 14.5 * zoomFactor, 14.5 * zoomFactor);
+                this.controls.target.set(0, -2.2 * zoomFactor, 1.8 * zoomFactor);
+                this.controls.update();
+                
                 this.camera.updateProjectionMatrix();
                 this.renderer.setSize(width, height);
             }
@@ -1400,9 +1595,16 @@
             }
             
             resetCamera() {
+                const container = document.getElementById('canvas-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                const aspect = width / height;
+                
+                const zoomFactor = Math.max(1.0, 1.75 / aspect);
+                
                 this.controls.reset();
-                this.camera.position.set(0, 14.5, 14.5);
-                this.controls.target.set(0, -2.2, 1.8);
+                this.camera.position.set(0, 14.5 * zoomFactor, 14.5 * zoomFactor);
+                this.controls.target.set(0, -2.2 * zoomFactor, 1.8 * zoomFactor);
                 this.controls.update();
             }
             
